@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ставки: придёт ли коллега в офис?</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    color: #fff; text-align: center; font-size: 2.2em;
+    margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  .subtitle {
+    text-align: center; color: rgba(255,255,255,0.9);
+    margin-bottom: 25px; font-size: 1.05em;
+  }
+  .status {
+    text-align: center; color: #fff; margin-bottom: 15px;
+    font-size: 0.9em; min-height: 1.2em;
+  }
+  .status.online { color: #b9f6ca; }
+  .status.offline { color: #ffcdd2; }
+
+  .grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #fff; border-radius: 16px; padding: 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+  .card h2 {
+    font-size: 1.25em; margin-bottom: 15px; color: #4a5568;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .calendar-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .calendar-header button {
+    background: #edf2f7; border: none; padding: 6px 12px;
+    border-radius: 8px; cursor: pointer; font-size: 1em;
+    transition: background .2s;
+  }
+  .calendar-header button:hover { background: #e2e8f0; }
+  .calendar-header .month-title { font-weight: bold; font-size: 1.1em; }
+
+  .calendar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  }
+  .weekday {
+    text-align: center; font-size: 0.8em; color: #a0aec0;
+    padding: 4px 0; font-weight: 600;
+  }
+  .day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.95em;
+    background: #f7fafc; border: 2px solid transparent;
+    transition: all .15s; user-select: none; position: relative;
+  }
+  .day:hover { transform: scale(1.08); }
+  .day.empty { background: transparent; cursor: default; }
+  .day.empty:hover { transform: none; }
+  .day.weekend { color: #e53e3e; background: #fff5f5; }
+  .day.came { background: #48bb78; color: #fff; border-color: #2f855a; }
+  .day.came::after {
+    content: "✓"; position: absolute; bottom: 2px; right: 4px;
+    font-size: 0.7em; opacity: 0.9;
+  }
+  .day.absent { background: #fc8181; color: #fff; border-color: #c53030; }
+  .day.absent::after {
+    content: "✗"; position: absolute; bottom: 2px; right: 4px;
+    font-size: 0.7em; opacity: 0.9;
+  }
+  .day.future { opacity: 0.55; }
+
+  .legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-top: 14px; font-size: 0.88em; color: #4a5568;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+  .dot.came { background: #48bb78; }
+  .dot.absent { background: #fc8181; }
+  .dot.empty { background: #f7fafc; border: 1px solid #cbd5e0; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; margin-bottom: 18px;
+  }
+  .stat {
+    text-align: center; padding: 12px 6px;
+    border-radius: 10px; background: #f7fafc;
+  }
+  .stat .num { font-size: 1.6em; font-weight: bold; color: #4a5568; }
+  .stat .num.green { color: #48bb78; }
+  .stat .num.red { color: #fc8181; }
+  .stat .label { font-size: 0.78em; color: #718096; margin-top: 4px; }
+
+  .bet-form { display: flex; gap: 8px; margin-bottom: 14px; }
+  .bet-form input {
+    flex: 1; padding: 10px 12px; border: 2px solid #e2e8f0;
+    border-radius: 10px; font-size: 0.95em; outline: none;
+    transition: border .2s;
+  }
+  .bet-form input:focus { border-color: #667eea; }
+  .bet-form input[type="number"] { max-width: 90px; flex: none; }
+  .bet-form button {
+    background: #667eea; color: #fff; border: none;
+    padding: 10px 18px; border-radius: 10px; cursor: pointer;
+    font-weight: 600; font-size: 0.95em; transition: background .2s;
+    white-space: nowrap;
+  }
+  .bet-form button:hover { background: #5568d3; }
+
+  .bet-list { list-style: none; }
+  .bet-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 8px;
+    background: #f7fafc; border-left: 4px solid #cbd5e0;
+    transition: all .2s;
+  }
+  .bet-item.winner {
+    background: #f0fff4; border-left-color: #48bb78;
+    box-shadow: 0 2px 8px rgba(72,187,120,0.25);
+  }
+  .bet-item .name { font-weight: 600; color: #2d3748; }
+  .bet-item .days {
+    background: #667eea; color: #fff; padding: 3px 10px;
+    border-radius: 20px; font-weight: bold; font-size: 0.9em;
+    margin-left: 10px;
+  }
+  .bet-item .delete {
+    background: none; border: none; color: #cbd5e0;
+    cursor: pointer; font-size: 1.2em; padding: 0 4px; margin-left: 8px;
+  }
+  .bet-item .delete:hover { color: #fc8181; }
+  .bet-item .crown { margin-right: 6px; }
+
+  .empty-bets {
+    color: #a0aec0; text-align: center; padding: 15px; font-style: italic;
+  }
+
+  .prize-info {
+    background: #fffbeb; border-left: 4px solid #f6ad55;
+    padding: 12px 14px; border-radius: 8px; margin-bottom: 16px;
+    font-size: 0.9em; color: #744210;
+  }
+
+  .hint {
+    font-size: 0.8em; color: #a0aec0;
+    text-align: center; margin-top: 10px;
+  }
+
+  .reset-btn {
+    display: block; margin: 20px auto 0;
+    background: rgba(255,255,255,0.15); color: #fff;
+    border: 2px solid rgba(255,255,255,0.4);
+    padding: 10px 22px; border-radius: 10px;
+    cursor: pointer; font-size: 0.9em; transition: all .2s;
+  }
+  .reset-btn:hover { background: rgba(255,255,255,0.25); }
+
+  .loading {
+    text-align: center; color: #fff; padding: 40px;
+    font-size: 1.2em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎯 Придёт ли коллега в офис?</h1>
+  <p class="subtitle">Ставки на октябрь — кто угадает количество дней? Приз — скрепки! 📎</p>
+  <div class="status" id="status">Подключение к серверу...</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>📅 Календарь</h2>
+      <div class="calendar-header">
+        <button onclick="changeMonth(-1)">←</button>
+        <span class="month-title" id="monthTitle"></span>
+        <button onclick="changeMonth(1)">→</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="legend">
+        <div class="legend-item"><span class="dot came"></span> Пришёл</div>
+        <div class="legend-item"><span class="dot absent"></span> Не пришёл</div>
+        <div class="legend-item"><span class="dot empty"></span> Не отмечено</div>
+      </div>
+      <p class="hint">Клик по дню — «пришёл» → «не пришёл» → сброс</p>
+    </div>
+
+    <div class="card">
+      <h2>📊 Статистика</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="num green" id="statCame">0</div>
+          <div class="label">Дней пришёл</div>
+        </div>
+        <div class="stat">
+          <div class="num red" id="statAbsent">0</div>
+          <div class="label">Дней прогулял</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="statTotal">0</div>
+          <div class="label">Всего отмечено</div>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 20px;">🎲 Ставки коллег</h2>
+      <div class="prize-info">
+        💰 Банк: <b id="bankCount">0</b> скрепок от участников
+      </div>
+      <div class="bet-form">
+        <input type="text" id="betName" placeholder="Имя коллеги" maxlength="30">
+        <input type="number" id="betDays" placeholder="Дней" min="0" max="31">
+        <button onclick="addBet()">Сделать ставку</button>
+      </div>
+      <ul class="bet-list" id="betList"></ul>
+    </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetAll()">🗑️ Сбросить всё</button>
+</div>
+
+<script type="module">
+  // ===== ИМПОРТ FIREBASE =====
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getDatabase, ref, onValue, set, remove, update
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ===== КОНФИГ =====
+  const firebaseConfig = {
+    apiKey: "AIzaSyDnzqu6HwtbKWMiMH_vjkD6EVThXrGiJgM",
+    authDomain: "kerberdays.firebaseapp.com",
+    databaseURL: "https://kerberdays-default-rtdb.firebaseio.com",
+    projectId: "kerberdays",
+    storageBucket: "kerberdays.firebasestorage.app",
+    messagingSenderId: "782518375107",
+    appId: "1:782518375107:web:ccc14508be4a743b68c876",
+    measurementId: "G-XJG4C3D6FX"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // ===== ЛОКАЛЬНОЕ СОСТОЯНИЕ (только UI) =====
+  let state = {
+    days: {},   // { "2025-10-01": "came" | "absent" }
+    bets: [],   // [{id, name, days}]
+    currentMonth: new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")
+  };
+  let connected = false;
+
+  // ===== СТАТУС ПОДКЛЮЧЕНИЯ =====
+  const statusEl = document.getElementById("status");
+  onValue(ref(db, ".info/connected"), (snap) => {
+    connected = snap.val() === true;
+    if (connected) {
+      statusEl.textContent = "🟢 Онлайн — данные синхронизируются";
+      statusEl.className = "status online";
+    } else {
+      statusEl.textContent = "🔴 Нет соединения";
+      statusEl.className = "status offline";
+    }
+  });
+
+  // ===== ПОДПИСКА НА ДАННЫЕ =====
+  onValue(ref(db, "days"), (snap) => {
+    state.days = snap.val() || {};
+    renderCalendar();
+    renderStats();
+    renderBets();
+  }, (err) => {
+    console.error("Ошибка чтения days:", err);
+    statusEl.textContent = "⚠️ Ошибка доступа к базе. Проверьте Rules.";
+    statusEl.className = "status offline";
+  });
+
+  onValue(ref(db, "bets"), (snap) => {
+    const val = snap.val() || {};
+    state.bets = Object.values(val);
+    renderBets();
+  }, (err) => {
+    console.error("Ошибка чтения bets:", err);
+  });
+
+  // ===== КАЛЕНДАРЬ =====
+  const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь",
+                  "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+  const WEEKDAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+
+  window.changeMonth = function(delta) {
+    let [y, m] = state.currentMonth.split("-").map(Number);
+    m += delta;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    state.currentMonth = y + "-" + String(m).padStart(2, "0");
+    renderCalendar();
+  };
+
+  function renderCalendar() {
+    const [year, month] = state.currentMonth.split("-").map(Number);
+    document.getElementById("monthTitle").textContent = MONTHS[month-1] + " " + year;
+
+    const grid = document.getElementById("calendarGrid");
+    grid.innerHTML = "";
+
+    WEEKDAYS.forEach(w => {
+      const el = document.createElement("div");
+      el.className = "weekday";
+      el.textContent = w;
+      grid.appendChild(el);
+    });
+
+    const firstDay = new Date(year, month - 1, 1);
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    for (let i = 0; i < startOffset; i++) {
+      const el = document.createElement("div");
+      el.className = "day empty";
+      grid.appendChild(el);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const el = document.createElement("div");
+      el.className = "day";
+      el.textContent = d;
+
+      const dateObj = new Date(year, month - 1, d);
+      const dow = dateObj.getDay();
+      if (dow === 0 || dow === 6) el.classList.add("weekend");
+      if (dateObj > today) el.classList.add("future");
+
+      const key = `${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const status = state.days[key];
+      if (status === "came") el.classList.add("came");
+      else if (status === "absent") el.classList.add("absent");
+
+      el.onclick = () => toggleDay(key);
+      grid.appendChild(el);
+    }
+  }
+
+  async function toggleDay(key) {
+    const cur = state.days[key];
+    const dayRef = ref(db, "days/" + key);
+    try {
+      if (!cur) await set(dayRef, "came");
+      else if (cur === "came") await set(dayRef, "absent");
+      else await remove(dayRef);
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось сохранить. Проверьте соединение.");
+    }
+  }
+
+  // ===== СТАТИСТИКА =====
+  function renderStats() {
+    let came = 0, absent = 0;
+    for (const key in state.days) {
+      if (state.days[key] === "came") came++;
+      else if (state.days[key] === "absent") absent++;
+    }
+    document.getElementById("statCame").textContent = came;
+    document.getElementById("statAbsent").textContent = absent;
+    document.getElementById("statTotal").textContent = came + absent;
+  }
+
+  // ===== СТАВКИ =====
+  window.addBet = async function() {
+    const nameEl = document.getElementById("betName");
+    const daysEl = document.getElementById("betDays");
+    const name = nameEl.value.trim();
+    const days = parseInt(daysEl.value, 10);
+
+    if (!name) { alert("Введите имя!"); return; }
+    if (isNaN(days) || days < 0 || days > 31) { alert("Введите число дней 0-31"); return; }
+
+    const id = Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+    try {
+      await set(ref(db, "bets/" + id), { id, name, days });
+      nameEl.value = "";
+      daysEl.value = "";
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось сохранить ставку.");
+    }
+  };
+
+  window.deleteBet = async function(id) {
+    try {
+      await remove(ref(db, "bets/" + id));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  function renderBets() {
+    const list = document.getElementById("betList");
+    list.innerHTML = "";
+    document.getElementById("bankCount").textContent = state.bets.length;
+
+    if (state.bets.length === 0) {
+      const li = document.createElement("li");
+      li.className = "empty-bets";
+      li.textContent = "Пока никто не сделал ставку. Будь первым! 📎";
+      list.appendChild(li);
+      return;
+    }
+
+    let came = 0;
+    for (const key in state.days) if (state.days[key] === "came") came++;
+
+    const sorted = [...state.bets].sort((a,b) => {
+      return Math.abs(a.days - came) - Math.abs(b.days - came);
+    });
+
+    sorted.forEach(bet => {
+      const li = document.createElement("li");
+      li.className = "bet-item";
+      const isWinner = bet.days === came && came > 0;
+      if (isWinner) li.classList.add("winner");
+
+      const left = document.createElement("div");
+      left.style.display = "flex";
+      left.style.alignItems = "center";
+      left.style.flex = "1";
+      left.innerHTML = `<span class="name">${isWinner ? '<span class="crown">👑</span>' : ''}${escapeHtml(bet.name)}</span>`;
+
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+      right.innerHTML = `
+        <span class="days">${bet.days} дн.</span>
+        <button class="delete" title="Удалить">×</button>
+      `;
+      right.querySelector(".delete").onclick = () => window.deleteBet(bet.id);
+
+      li.appendChild(left);
+      li.appendChild(right);
+      list.appendChild(li);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  // ===== СБРОС =====
+  window.resetAll = async function() {
+    if (!confirm("Точно сбросить ВСЕ отметки и ставки у всех? Это действие нельзя отменить.")) return;
+    try {
+      await set(ref(db, "days"), null);
+      await set(ref(db, "bets"), null);
+    } catch (e) {
+      console.error(e);
+      alert("Не удалось сбросить.");
+    }
+  };
+
+  // ===== ENTER =====
+  document.getElementById("betName").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("betDays").focus();
+  });
+  document.getElementById("betDays").addEventListener("keydown", e => {
+    if (e.key === "Enter") window.addBet();
+  });
+
+  // ===== СТАРТОВЫЙ РЕНДЕР =====
+  renderCalendar();
+</script>
+</body>
+</html>
